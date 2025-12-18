@@ -1,10 +1,6 @@
 import express from "express";
 import cors from "cors";
-import authRoutes from "./routes/v1/auth_routes";
-import userRoutes from "./routes/v1/user_routes";
-import workoutRoutes from "./routes/v1/workout_routes";
-import workoutPlanRoutes from "./routes/v1/workout_plan_routes";
-import verify_access from "./middleware/verify_access";
+
 import routes from "./routes";
 
 const createApp = () => {

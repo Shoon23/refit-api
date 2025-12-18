@@ -1,9 +1,16 @@
 import { Request, Response } from "express";
 import Joi from "joi";
-import prisma from "../lib/prisma";
-import fs from "fs";
 
-import { iExercises } from "../types/workout_types";
+import { Day } from "@prisma/client";
+import workout_plan_service from "../services/workout_plan_service";
+
+export interface IAssignExerciseInput {
+  day: Day;
+  workout_day_id: string;
+  reps: number;
+  set: number;
+  detail_id: string;
+}
 const Days = [
   "Monday",
   "Tuesday",
@@ -13,7 +20,6 @@ const Days = [
   "Saturday",
   "Sunday",
 ];
-
 const assign_exercise_schema = Joi.object({
   day: Joi.string()
     .valid(...Days)
@@ -29,34 +35,15 @@ async function assign_exercise(req: Request, res: Response) {
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
   }
-  try {
-    const get_workout_schedule = await prisma.workoutDay.findFirst({
-      where: {
-        day: value.day,
-        id: value.workout_day_id,
-      },
-      select: {
-        id: true,
-      },
-    });
 
-    if (!get_workout_schedule) {
-      return res.status(404).json({ message: "Missing Schedule" });
-    }
+  const data: IAssignExerciseInput = value;
 
-    const add_exercise = await prisma.exercise.create({
-      data: {
-        workout_day_id: get_workout_schedule.id,
-        reps: value.reps,
-        sets: value.sets,
-        detail_id: value.detail_id,
-      },
-    });
+  const result = await workout_plan_service.assign_exercise(data);
 
-    return res.status(201).json(add_exercise);
-  } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
-  }
+  if (!result.ok)
+    return res.status(500).json({ message: result.error.message });
+
+  return res.status(200).json(result.value);
 }
 
 const get_exercise_schema = Joi.object({
@@ -67,46 +54,12 @@ async function get_exercise(req: Request, res: Response) {
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
   }
-  try {
-    const get_workout_day = await prisma.workoutDay.findFirst({
-      where: {
-        id: value.workout_day_id,
-      },
-      include: {
-        exercises: true,
-      },
-    });
-    if (!get_workout_day) {
-      return res.status(404).json({ message: "Missing Exercise" });
-    }
-    const data = fs.readFileSync(
-      "public/exercises_data/exercises.json",
-      "utf8"
-    );
+  const result = await workout_plan_service.get_exercise(value.workout_day_id);
 
-    const exercisesList: iExercises = JSON.parse(data);
+  if (!result.ok)
+    return res.status(500).json({ message: result.error.message });
 
-    const results: any = [];
-    get_workout_day.exercises.forEach((exercise) => {
-      const workout = exercisesList.workouts.find(
-        (workout) =>
-          workout.id.toLowerCase() === exercise.detail_id.toLowerCase()
-      );
-
-      if (workout) {
-        const { detail_id, ...rest } = exercise;
-        results.push({
-          ...rest,
-          details: workout,
-        });
-      }
-    });
-    const { exercises, ...rest } = get_workout_day;
-
-    res.status(200).json({ ...rest, exercises: results });
-  } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
-  }
+  return res.status(200).json(result.value);
 }
 
 const remove_exercise_schema = Joi.object({
@@ -117,16 +70,18 @@ async function remove_exercise(req: Request, res: Response) {
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
   }
-  try {
-    await prisma.exercise.delete({
-      where: {
-        id: value.id,
-      },
-    });
-    res.status(204).send("success");
-  } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
-  }
+  const result = await workout_plan_service.remove_exercise(value.id);
+
+  if (!result.ok)
+    return res.status(500).json({ message: result.error.message });
+
+  return res.status(200).json(result.value);
+}
+
+export interface IUpdateExerciseInput {
+  exercise_id: string;
+  sets?: number;
+  reps?: number;
 }
 
 const update_exercise_schema = Joi.object({
@@ -141,21 +96,20 @@ async function update_exercise(req: Request, res: Response) {
     return res.status(400).json({ message: error.details[0].message });
   }
   const { exercise_id, ...detail } = value;
-  try {
-    const updated_exercise = await prisma.exercise.update({
-      where: {
-        id: value.exercise_id,
-      },
-      data: detail,
-    });
 
-    res.status(200).json(updated_exercise);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Something went wrong" });
-  }
+  const data: IUpdateExerciseInput = value;
+  const result = await workout_plan_service.update_exercise(data);
+
+  if (!result.ok)
+    return res.status(500).json({ message: result.error.message });
+
+  return res.status(200).json(result.value);
 }
 
+export interface ICreateWorkoutPlanInput {
+  user_id: string;
+  name: string;
+}
 // create  workout plan
 const create_workout_plan_schema = Joi.object({
   user_id: Joi.string().required(),
@@ -167,45 +121,14 @@ async function create_workout_plan(req: Request, res: Response) {
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
   }
-  try {
-    await prisma.$transaction(async (prisma) => {
-      // Create workout plan
-      const create_workout_plan = await prisma.workoutPlan.create({
-        data: {
-          user_id: value.user_id,
-          name: value.name,
-        },
-        select: {
-          id: true,
-          name: true,
-          is_active: true,
-        },
-      });
-      const workouts: any = [];
-      // create workout weeks
-      for (const day of Days) {
-        const workout = await prisma.workoutDay.create({
-          data: {
-            day: day as any,
-            workout_plan_id: create_workout_plan.id,
-          },
-          select: {
-            id: true,
-            day: true,
-          },
-        });
 
-        workouts.push(workout);
-      }
+  const data: ICreateWorkoutPlanInput = value;
+  const result = await workout_plan_service.create_workout_plan(data);
 
-      return res.status(201).json({
-        workout_plan: { ...create_workout_plan, workouts },
-      });
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Something went wrong" });
-  }
+  if (!result.ok)
+    return res.status(500).json({ message: result.error.message });
+
+  return res.status(200).json(result.value);
 }
 
 // delete workoutplan
@@ -218,20 +141,18 @@ async function delete_workout_plan(req: Request, res: Response) {
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
   }
-  try {
-    await prisma.workoutPlan.delete({
-      where: {
-        id: value.id,
-      },
-    });
+  const result = await workout_plan_service.delete_workout_plan(value.id);
 
-    res.status(204).send("success");
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Something went wrong" });
-  }
+  if (!result.ok)
+    return res.status(500).json({ message: result.error.message });
+
+  return res.status(200).json(result.value);
 }
 
+export interface IUpdateWorkoutPlanInput {
+  workout_plan_id: string;
+  name: string;
+}
 // update workoutplan
 const update_workout_plan_schema = Joi.object({
   workout_plan_id: Joi.string().required(),
@@ -243,21 +164,12 @@ async function update_workout_plan(req: Request, res: Response) {
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
   }
-  try {
-    await prisma.workoutPlan.update({
-      where: {
-        id: value.workout_plan_id,
-      },
-      data: {
-        name: value.name,
-      },
-    });
+  const result = await workout_plan_service.update_workout_plan(value);
 
-    res.status(200).send("success");
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Something went wrong" });
-  }
+  if (!result.ok)
+    return res.status(500).json({ message: result.error.message });
+
+  return res.status(200).json(result.value);
 }
 
 // get workoutplan
@@ -284,36 +196,15 @@ async function get_workout_plans(req: Request, res: Response) {
     return res.status(400).json({ message: queryError.details[0].message });
   }
 
-  try {
-    const workout_plan = await prisma.workoutPlan.findMany({
-      take: queryValue.page_size,
-      skip: queryValue.page_number * queryValue.page_size,
-      where: {
-        user_id: paramsValue.id,
-      },
-      select: {
-        id: true,
-        name: true,
-        is_active: true,
-        workouts: {
-          select: {
-            id: true,
-            day: true,
-          },
-        },
-      },
-      orderBy: [
-        {
-          created_at: "desc",
-        },
-      ],
-    });
+  const result = await workout_plan_service.get_workout_plans(
+    paramsValue.id,
+    queryValue
+  );
 
-    return res.status(200).json(workout_plan);
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Something went wrong" });
-  }
+  if (!result.ok)
+    return res.status(500).json({ message: result.error.message });
+
+  return res.status(200).json(result.value);
 }
 
 // activate workoutplan
@@ -327,34 +218,15 @@ async function active_workout_plan(req: Request, res: Response) {
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
   }
-  try {
-    await prisma.$transaction(async (prisma) => {
-      if (value?.old_wp_id) {
-        await prisma.workoutPlan.update({
-          where: {
-            id: value.old_wp_id,
-          },
-          data: {
-            is_active: false,
-          },
-        });
-      }
+  const result = await workout_plan_service.active_workout_plan(
+    value.new_wp_id,
+    value.old_wp_id
+  );
 
-      await prisma.workoutPlan.update({
-        where: {
-          id: value.new_wp_id,
-        },
-        data: {
-          is_active: true,
-        },
-      });
+  if (!result.ok)
+    return res.status(500).json({ message: result.error.message });
 
-      res.status(200).send("success");
-    });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Something went wrong" });
-  }
+  return res.status(200).json(result.value);
 }
 
 export default {

@@ -11,20 +11,11 @@ export default (req: Request, res: Response, next: NextFunction) => {
       message: "Missing Access Token",
     });
   }
-  // preferences/update
-  try {
-    verify_access_jwt(token);
-    next();
-  } catch (error) {
-    if (
-      error instanceof TokenExpiredError ||
-      error instanceof JsonWebTokenError
-    ) {
-      res.status(401).json({
-        error: "Token is expired or invalid",
-      });
-    } else {
-      res.status(500).json({ message: "Something Went Wrong!" });
-    }
-  }
+  const result = verify_access_jwt(token);
+
+  if (!result.ok)
+    return res.status(401).json({
+      message: result.error.message,
+    });
+  next();
 };

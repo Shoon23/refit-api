@@ -1,9 +1,9 @@
 import fs from "fs";
 import { err, ok, Result } from "../utils/result";
-import { iExercises } from "../types/workout_types";
+import { iExercises, iWorkout } from "../types/workout_types";
 
 const readExercisesFile = async (): Promise<
-  Result<iExercises, { message: string }>
+  Result<iWorkout[], { message: string }>
 > => {
   try {
     const data = fs.readFileSync(

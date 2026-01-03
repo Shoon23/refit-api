@@ -64,32 +64,36 @@ const createPreference = async (
   input: ICreatePreferenceInput
 ): Promise<Result<string, { message: string }>> => {
   try {
-    const create_pref = await prisma.preference.create({
-      data: { user_id: input.id },
+    const result = await prisma.$transaction(async (tx) => {
+      const create_pref = await tx.preference.create({
+        data: { user_id: input.user_id },
+      });
+
+      await tx.preferLevel.createMany({
+        data: input.levels.map((level) => ({
+          name: level,
+          preference_id: create_pref.id,
+        })),
+      });
+
+      await tx.preferMuscle.createMany({
+        data: input.muscles.map((muscle) => ({
+          name: muscle,
+          preference_id: create_pref.id,
+        })),
+      });
+
+      await tx.preferEquipment.createMany({
+        data: input.equipments.map((equip) => ({
+          name: equip,
+          preference_id: create_pref.id,
+        })),
+      });
+
+      return create_pref.id;
     });
 
-    await prisma.preferLevel.createMany({
-      data: input.levels.map((level) => ({
-        name: level,
-        preference_id: create_pref.id,
-      })),
-    });
-
-    await prisma.preferMuscle.createMany({
-      data: input.muscles.map((muscle) => ({
-        name: muscle,
-        preference_id: create_pref.id,
-      })),
-    });
-
-    await prisma.preferEquipment.createMany({
-      data: input.equipments.map((equip) => ({
-        name: equip,
-        preference_id: create_pref.id,
-      })),
-    });
-
-    return ok(create_pref.id);
+    return ok(result);
   } catch (error) {
     return err({ message: "Failed to create preference" });
   }

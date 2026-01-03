@@ -89,13 +89,11 @@ async function reccomend_workout(req: Request, res: Response) {
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
   }
-  const { levels, equipments, muscles } = value;
 
   const result = await workout_service.recommendWorkout(
     value as IRecommendWorkoutInput,
     query_string as IPaginationQuery
   );
-
   if (!result.ok)
     return res.status(500).json({ message: result.error.message });
 
@@ -118,12 +116,10 @@ const search_schema = Joi.object({
 // search workout
 async function search_workouts(req: Request, res: Response) {
   const { value, error } = search_schema.validate(req.body);
-
   const { value: query_string } = pagination_schema.validate(req.query);
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
   }
-  const { equipments, muscles, search_key } = value;
 
   const result = await workout_service.find_workouts(
     value as IRecommendWorkoutInput,

@@ -5,12 +5,19 @@ import workoutV1 from "./v1/workout_routes";
 import workoutPlanV1 from "./v1/workout_plan_routes";
 import verify_access from "../middleware/verify_access";
 
-const router = Router();
+const routes = Router();
+routes.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    message: "Server is healthy",
+  });
+});
+routes.use("/auth", authV1);
+routes.use(verify_access);
+routes.use("/preferences", preferenceV1);
+routes.use("/workouts", workoutV1);
+routes.use("/workout_plan", workoutPlanV1);
 
-router.use("/api/v1/auth", authV1);
-router.use(verify_access);
-router.use("/api/v1/preference", preferenceV1);
-router.use("/api/v1/workouts", workoutV1);
-router.use("/api/v1/workout-plans", workoutPlanV1);
-
-export default router;
+export default routes;

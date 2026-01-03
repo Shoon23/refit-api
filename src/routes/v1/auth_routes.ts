@@ -1,7 +1,6 @@
 import { Router } from "express";
 import auth_controller from "../../controller/auth_controller";
 import user_controller from "../../controller/preference_controller";
-import verify_access from "../../middleware/verify_access";
 
 const auth_routes = Router();
 

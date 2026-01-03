@@ -32,7 +32,7 @@ const login_user = async (email: string, password: string) => {
   const refresh_result = generate_refresh_jwt(user.id);
   if (!refresh_result.ok)
     return err({ status: 500, message: refresh_result.error.message });
-  const response_DTO = toUserAuth(user.id, workout_plan_res.value);
+  const response_DTO = toUserAuth(user, workout_plan_res.value);
 
   response_DTO.access_token = access_result.value;
   response_DTO.refresh_token = refresh_result.value;
@@ -104,7 +104,7 @@ const refresh_user = async (token: string) => {
   if (!access_result.ok)
     return err({ status: 500, message: access_result.error.message });
 
-  const response_DTO = toUserAuth(user.id, workout_plan_res.value);
+  const response_DTO = toUserAuth(user, workout_plan_res.value);
 
   response_DTO.access_token = access_result.value;
 

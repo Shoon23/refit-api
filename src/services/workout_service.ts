@@ -1,4 +1,3 @@
-import { ok } from "assert";
 import {
   IPaginationQuery,
   IRecommendWorkoutInput,
@@ -16,7 +15,7 @@ import {
   filter_by_muscle,
   filter_by_search_key,
 } from "../utils/filter_utils";
-import { Result } from "../utils/result";
+import { ok, Result } from "../utils/result";
 import { iWorkout } from "../types/workout_types";
 
 const recommendWorkout = async (
@@ -25,9 +24,10 @@ const recommendWorkout = async (
 ): Promise<Result<any, { message: string }>> => {
   const dataResult = await workout_repo.readExercisesFile();
   if (!dataResult.ok) return dataResult;
+
   const workouts = dataResult.value;
 
-  const levelFiltered = filter_by_level(workouts.workouts, input.levels);
+  const levelFiltered = filter_by_level(workouts, input.levels);
   const muscleFiltered = filter_by_muscle(levelFiltered, input.muscles);
   const equipmentFiltered = filter_by_equipments(
     muscleFiltered,
@@ -37,13 +37,11 @@ const recommendWorkout = async (
   const finalList = query.is_shuffle
     ? shuffle_array(equipmentFiltered)
     : equipmentFiltered;
-
   const paginated = paginate_results(finalList, {
     page_number: query.page_number ?? 1,
     page_size: query.page_size ?? 10,
   });
-
-  return ok(paginated) as any;
+  return ok(paginated);
 };
 
 const find_workouts = async (
@@ -52,7 +50,7 @@ const find_workouts = async (
 ): Promise<Result<any, { message: string }>> => {
   const dataResult = await workout_repo.readExercisesFile();
   if (!dataResult.ok) return dataResult;
-  const workouts = dataResult.value.workouts;
+  let workouts = dataResult.value;
 
   const { equipments, levels, muscles, search_key } = data;
 
@@ -60,6 +58,7 @@ const find_workouts = async (
     page_size: query.page_size ?? 1,
     page_number: query.page_number ?? 10,
   };
+
   if (
     (!equipments || equipments.length === 0) &&
     (!muscles || muscles.length === 0) &&
@@ -67,7 +66,7 @@ const find_workouts = async (
   ) {
     const paginated_results = paginate_results(workouts, query_string);
 
-    return ok(paginate_results) as any;
+    return ok(paginated_results);
   }
 
   // filter based on the equipments if its
@@ -169,8 +168,7 @@ const find_workouts = async (
   }
 
   const paginated_results = paginate_results(final_filter, query_string);
-
-  return ok(paginated_results) as any;
+  return ok(paginated_results);
 };
 export default {
   recommendWorkout,

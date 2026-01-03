@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-
 import routes from "./routes";
 
 const createApp = () => {
@@ -17,16 +16,8 @@ const createApp = () => {
   );
   app.use("/info_img", express.static("public/info_img"));
 
-  app.get("/health", (req, res) => {
-    res.status(200).json({
-      status: "ok",
-      uptime: process.uptime(), // seconds since server started
-      timestamp: new Date().toISOString(),
-      message: "Server is healthy",
-    });
-  });
   // Routes
-  app.use(routes);
+  app.use("/api", routes);
 
   return app;
 };

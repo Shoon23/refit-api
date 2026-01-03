@@ -15,7 +15,6 @@ const assign_exercise = async (data: IAssignExerciseInput) => {
   );
 
   if (!workoutSchedule.ok) return workoutSchedule;
-
   if (!workoutSchedule.value)
     return err({
       status: 404,
@@ -25,7 +24,7 @@ const assign_exercise = async (data: IAssignExerciseInput) => {
   const added_exercise = await workout_plan_repo.add_exercise_to_day(
     data.workout_day_id,
     data.reps,
-    data.set,
+    data.sets,
     data.detail_id
   );
 
@@ -49,7 +48,7 @@ const get_exercise = async (id: string) => {
   const result: any = [];
 
   workout_day.value.exercises.forEach((excercise) => {
-    const workout = workoutList.value.workouts.find(
+    const workout = workoutList.value.find(
       (workout) =>
         workout.id.toLowerCase() === excercise.detail_id.toLowerCase()
     );

@@ -8,7 +8,7 @@ export interface IAssignExerciseInput {
   day: Day;
   workout_day_id: string;
   reps: number;
-  set: number;
+  sets: number;
   detail_id: string;
 }
 const Days = [

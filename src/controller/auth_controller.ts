@@ -43,6 +43,7 @@ async function login(req: Request, res: Response) {
       .status(result.error.status)
       .json({ message: result.error.message });
   }
+
   return res.status(200).json(result.value);
 }
 

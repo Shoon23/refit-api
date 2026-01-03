@@ -37,7 +37,7 @@ async function update_preference(req: Request, res: Response) {
 }
 
 export interface ICreatePreferenceInput {
-  id: string;
+  user_id: string;
   levels: string[];
   equipments: string[];
   muscles: string[];
@@ -56,6 +56,7 @@ const pref_schema = Joi.object({
 });
 export const create_preference = async (req: Request, res: Response) => {
   const { value, error } = pref_schema.validate(req.body);
+
   if (error) return res.status(400).json({ message: error.details[0].message });
 
   const data: ICreatePreferenceInput = value;
